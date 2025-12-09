@@ -1,64 +1,8 @@
 [
   {
-    "id": "feature-1765286925345-4eu5miocn",
+    "id": "feature-1765288408132-3pmld0an6",
     "category": "Core",
-    "description": "After a category has been created we should persist that somewhere such as in the .automaker directory in a .json file so that all the categories of future items I add in will persist even if I delete all the cards.",
-    "steps": [],
-    "status": "in_progress"
-  },
-  {
-    "id": "feature-1765287004835-d2c5aqdkr",
-    "category": "Core",
-    "description": "I need to add the ability on the Kanban cards to enable or disable if it's going to do the whole test driven development approach. Sometimes the task is so easy I don't need it to write tests for, but... And if it is a task that did not have a test, a user should manually be able to click a verified button when it's in the in progress column and the agent is done. I'll have to manually verify it.  So this might change the logic a little bit to allow dragging of cards when they aren't tested automatically from the in progress column back to verified and from verified back to in progress. But keep the existing functionality if it is a test automated card and prevent the dragging.",
-    "steps": [],
-    "status": "backlog"
-  },
-  {
-    "id": "feature-1765287091626-ceoj6xld8",
-    "category": "Kanban",
-    "description": "Show a confirmed dialog when I click on the trash icon for deleting a card. Use the existing dialog that we have in the components directory for this.",
-    "steps": [],
-    "status": "verified"
-  },
-  {
-    "id": "feature-1765287114711-fgypwhnvt",
-    "category": "Kanban",
-    "description": "When adding a new feature inside the modal there's an add feature button. Can you add a shortcut of shift? Enter which if you click shift enter I'll automatically add it in",
-    "steps": [],
-    "status": "verified"
-  },
-  {
-    "id": "feature-1765287141131-dz489etgj",
-    "category": "Kanban",
-    "description": "When I edit a card, it's showing an input for the description refactor to also show a text area for description like we do on the add card, add feature card.",
-    "steps": [],
-    "status": "in_progress"
-  },
-  {
-    "id": "feature-1765287613626-z01cksyg6",
-    "category": "Core",
-    "description": "I'm noticing that when cards finish running, sometimes Cloud Code will update the featureless JSON and restore old state. I think instead of actually modifying the featureless JSON manually, it should call an custom tool, and that tool should update a card directly into the JSON so that Cloud Code isn't potentially messing with other things. All it needs to do is just pass in an ID and a status, and that's going to update in the JSON list.",
-    "steps": [],
-    "status": "verified"
-  },
-  {
-    "id": "feature-1765287638726-rtxxdpobi",
-    "category": "Kanban",
-    "description": " Change the shortcut key for the add new feature from shift enter to command enter",
-    "steps": [],
-    "status": "verified"
-  },
-  {
-    "id": "feature-1765288256029-ask2y1gq2",
-    "category": "Agent Runner",
-    "description": "Can you please add a shortcut for starting a new session?",
-    "steps": [],
-    "status": "verified"
-  },
-  {
-    "id": "feature-1765288315355-ihrm3jz83",
-    "category": "Kanban",
-    "description": "Can you please refactor it so if I were to press one of the number keys on my keyboard when the output modal is open, just go ahead and auto collapse it if it was the same number that I had open. If I were to press a different number on my number key, don't actually close it again.",
+    "description": "Can you add a shortcut key for O to open up a new project? To click on the open new project button that's in like the logo header area.",
     "steps": [],
     "status": "verified"
   }

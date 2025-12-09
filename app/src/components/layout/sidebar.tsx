@@ -33,6 +33,8 @@ import {
 import {
   useKeyboardShortcuts,
   NAV_SHORTCUTS,
+  UI_SHORTCUTS,
+  ACTION_SHORTCUTS,
   KeyboardShortcut,
 } from "@/hooks/use-keyboard-shortcuts";
 
@@ -83,6 +85,20 @@ export function Sidebar() {
   const navigationShortcuts: KeyboardShortcut[] = useMemo(() => {
     const shortcuts: KeyboardShortcut[] = [];
 
+    // Sidebar toggle shortcut - always available
+    shortcuts.push({
+      key: UI_SHORTCUTS.toggleSidebar,
+      action: () => toggleSidebar(),
+      description: "Toggle sidebar",
+    });
+
+    // Open project shortcut - always available
+    shortcuts.push({
+      key: ACTION_SHORTCUTS.openProject,
+      action: () => setCurrentView("welcome"),
+      description: "Open project (navigate to welcome view)",
+    });
+
     // Only enable nav shortcuts if there's a current project
     if (currentProject) {
       navSections.forEach((section) => {
@@ -106,7 +122,7 @@ export function Sidebar() {
     }
 
     return shortcuts;
-  }, [currentProject, setCurrentView]);
+  }, [currentProject, setCurrentView, toggleSidebar]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts(navigationShortcuts);
@@ -124,18 +140,29 @@ export function Sidebar() {
       data-testid="sidebar"
     >
       {/* Floating Collapse Toggle Button - Desktop only */}
-      <button
-        onClick={toggleSidebar}
-        className="hidden lg:flex absolute top-1/2 -translate-y-1/2 -right-3 z-50 items-center justify-center w-6 h-6 rounded-full bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-700 hover:border-white/20 transition-all shadow-lg titlebar-no-drag"
-        data-testid="sidebar-collapse-button"
-        title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-      >
-        {sidebarOpen ? (
-          <PanelLeftClose className="w-3.5 h-3.5" />
-        ) : (
-          <PanelLeft className="w-3.5 h-3.5" />
-        )}
-      </button>
+      <div className="hidden lg:flex absolute top-1/2 -translate-y-1/2 -right-3 z-50 group/toggle">
+        <button
+          onClick={toggleSidebar}
+          className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-700 hover:border-white/20 transition-all shadow-lg titlebar-no-drag"
+          data-testid="sidebar-collapse-button"
+        >
+          {sidebarOpen ? (
+            <PanelLeftClose className="w-3.5 h-3.5" />
+          ) : (
+            <PanelLeft className="w-3.5 h-3.5" />
+          )}
+        </button>
+        {/* Tooltip */}
+        <div
+          className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 text-white text-xs rounded opacity-0 group-hover/toggle:opacity-100 transition-opacity whitespace-nowrap z-50 border border-zinc-700 pointer-events-none"
+          data-testid="sidebar-toggle-tooltip"
+        >
+          {sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}{" "}
+          <span className="ml-1 px-1 py-0.5 bg-white/10 rounded text-[10px] font-mono" data-testid="sidebar-toggle-shortcut">
+            {UI_SHORTCUTS.toggleSidebar}
+          </span>
+        </div>
+      </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Logo */}
@@ -177,7 +204,7 @@ export function Sidebar() {
               <button
                 onClick={() => setCurrentView("welcome")}
                 className="group flex items-center justify-center w-8 h-8 rounded-lg relative overflow-hidden transition-all text-zinc-400 hover:text-white hover:bg-white/5"
-                title="Open Project"
+                title={`Open Project (${ACTION_SHORTCUTS.openProject})`}
                 data-testid="open-project-button"
               >
                 <FolderOpen className="w-4 h-4 flex-shrink-0" />
