@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getElectronAPI } from "@/lib/electron";
+import { Markdown } from "@/components/ui/markdown";
 
 interface InterviewMessage {
   id: string;
@@ -100,10 +101,15 @@ export function InterviewView() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTo({
-        top: messagesContainerRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+      // Use a small delay to ensure DOM is updated
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }, 100);
     }
   }, [messages]);
 
@@ -437,10 +443,15 @@ export function InterviewView() {
               )}
             >
               <CardContent className="p-3">
-                <p className={cn(
-                  "text-sm whitespace-pre-wrap",
-                  message.role === "assistant" && "text-primary"
-                )}>{message.content}</p>
+                {message.role === "assistant" ? (
+                  <Markdown className="text-sm text-primary prose-headings:text-primary prose-strong:text-primary prose-code:text-primary">
+                    {message.content}
+                  </Markdown>
+                ) : (
+                  <p className="text-sm whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                )}
                 <p
                   className={cn(
                     "text-xs mt-2",
