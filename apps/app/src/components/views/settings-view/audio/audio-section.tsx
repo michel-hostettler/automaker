@@ -39,7 +39,7 @@ export function AudioSection({
           <Checkbox
             id="mute-done-sound"
             checked={muteDoneSound}
-            onCheckedChange={(checked) => onMuteDoneSoundChange(checked === true)}
+            onCheckedChange={onMuteDoneSoundChange}
             className="mt-1"
             data-testid="mute-done-sound-checkbox"
           />

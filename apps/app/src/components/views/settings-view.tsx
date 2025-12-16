@@ -2,21 +2,9 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/store/app-store";
-import {
-  Key,
-  Palette,
-  Terminal,
-  FlaskConical,
-  Trash2,
-  Settings2,
-  Volume2,
-} from "lucide-react";
 
-import {
-  useCliStatus,
-  useSettingsView,
-  type SettingsViewId,
-} from "./settings-view/hooks";
+import { useCliStatus, useSettingsView } from "./settings-view/hooks";
+import { NAV_ITEMS } from "./settings-view/config/navigation";
 import { SettingsHeader } from "./settings-view/components/settings-header";
 import { KeyboardMapDialog } from "./settings-view/components/keyboard-map-dialog";
 import { DeleteProjectDialog } from "./settings-view/components/delete-project-dialog";
@@ -33,17 +21,6 @@ import type {
   Theme,
 } from "./settings-view/shared/types";
 import type { Project as ElectronProject } from "@/lib/electron";
-
-// Navigation items for the side panel
-const NAV_ITEMS = [
-  { id: "api-keys", label: "API Keys", icon: Key },
-  { id: "claude", label: "Claude", icon: Terminal },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "keyboard", label: "Keyboard Shortcuts", icon: Settings2 },
-  { id: "audio", label: "Audio", icon: Volume2 },
-  { id: "defaults", label: "Feature Defaults", icon: FlaskConical },
-  { id: "danger", label: "Danger Zone", icon: Trash2 },
-];
 
 export function SettingsView() {
   const {
@@ -104,8 +81,6 @@ export function SettingsView() {
   // Render the active section based on current view
   const renderActiveSection = () => {
     switch (activeView) {
-      case "api-keys":
-        return <ApiKeysSection />;
       case "claude":
         return (
           <ClaudeCliStatus
@@ -173,7 +148,7 @@ export function SettingsView() {
           navItems={NAV_ITEMS}
           activeSection={activeView}
           currentProject={currentProject}
-          onNavigate={(id) => navigateTo(id as SettingsViewId)}
+          onNavigate={navigateTo}
         />
 
         {/* Content Panel - Shows only the active section */}

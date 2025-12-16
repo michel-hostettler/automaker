@@ -8,9 +8,10 @@ import {
   FlaskConical,
   Trash2,
 } from "lucide-react";
+import type { SettingsViewId } from "../hooks/use-settings-view";
 
 export interface NavigationItem {
-  id: string;
+  id: SettingsViewId;
   label: string;
   icon: LucideIcon;
 }
