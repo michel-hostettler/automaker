@@ -29,6 +29,8 @@ export function SettingsView() {
     setProjectTheme,
     defaultSkipTests,
     setDefaultSkipTests,
+    enableDependencyBlocking,
+    setEnableDependencyBlocking,
     useWorktrees,
     setUseWorktrees,
     showProfilesOnly,
@@ -117,9 +119,11 @@ export function SettingsView() {
           <FeatureDefaultsSection
             showProfilesOnly={showProfilesOnly}
             defaultSkipTests={defaultSkipTests}
+            enableDependencyBlocking={enableDependencyBlocking}
             useWorktrees={useWorktrees}
             onShowProfilesOnlyChange={setShowProfilesOnly}
             onDefaultSkipTestsChange={setDefaultSkipTests}
+            onEnableDependencyBlockingChange={setEnableDependencyBlocking}
             onUseWorktreesChange={setUseWorktrees}
           />
         );

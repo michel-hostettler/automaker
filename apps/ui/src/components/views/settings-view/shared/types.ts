@@ -30,7 +30,10 @@ export type Theme =
   | "catppuccin"
   | "onedark"
   | "synthwave"
-  | "red";
+  | "red"
+  | "cream"
+  | "sunset"
+  | "gray";
 
 export type KanbanDetailLevel = "minimal" | "standard" | "detailed";
 

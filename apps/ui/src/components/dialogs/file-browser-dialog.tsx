@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   FolderOpen,
   Folder,
@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   HardDrive,
   CornerDownLeft,
+  Clock,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -44,6 +46,44 @@ interface FileBrowserDialogProps {
   initialPath?: string;
 }
 
+const RECENT_FOLDERS_KEY = "file-browser-recent-folders";
+const MAX_RECENT_FOLDERS = 5;
+
+function getRecentFolders(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(RECENT_FOLDERS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addRecentFolder(path: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const recent = getRecentFolders();
+    // Remove if already exists, then add to front
+    const filtered = recent.filter((p) => p !== path);
+    const updated = [path, ...filtered].slice(0, MAX_RECENT_FOLDERS);
+    localStorage.setItem(RECENT_FOLDERS_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+function removeRecentFolder(path: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const recent = getRecentFolders();
+    const updated = recent.filter((p) => p !== path);
+    localStorage.setItem(RECENT_FOLDERS_KEY, JSON.stringify(updated));
+    return updated;
+  } catch {
+    return [];
+  }
+}
+
 export function FileBrowserDialog({
   open,
   onOpenChange,
@@ -60,7 +100,25 @@ export function FileBrowserDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
+  const [recentFolders, setRecentFolders] = useState<string[]>([]);
   const pathInputRef = useRef<HTMLInputElement>(null);
+
+  // Load recent folders when dialog opens
+  useEffect(() => {
+    if (open) {
+      setRecentFolders(getRecentFolders());
+    }
+  }, [open]);
+
+  const handleRemoveRecent = useCallback((e: React.MouseEvent, path: string) => {
+    e.stopPropagation();
+    const updated = removeRecentFolder(path);
+    setRecentFolders(updated);
+  }, []);
+
+  const handleSelectRecent = useCallback((path: string) => {
+    browseDirectory(path);
+  }, []);
 
   const browseDirectory = async (dirPath?: string) => {
     setLoading(true);
@@ -152,27 +210,34 @@ export function FileBrowserDialog({
 
   const handleSelect = () => {
     if (currentPath) {
+      addRecentFolder(currentPath);
       onSelect(currentPath);
       onOpenChange(false);
     }
   };
 
+  // Helper to get folder name from path
+  const getFolderName = (path: string) => {
+    const parts = path.split(/[/\\]/).filter(Boolean);
+    return parts[parts.length - 1] || path;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-popover border-border max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader className="pb-2">
-          <DialogTitle className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-brand-500" />
+      <DialogContent className="bg-popover border-border max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-4">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <FolderOpen className="w-4 h-4 text-brand-500" />
             {title}
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
+          <DialogDescription className="text-muted-foreground text-xs">
             {description}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3 min-h-[400px] flex-1 overflow-hidden py-2">
+        <div className="flex flex-col gap-2 min-h-[350px] flex-1 overflow-hidden py-1">
           {/* Direct path input */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Input
               ref={pathInputRef}
               type="text"
@@ -180,7 +245,7 @@ export function FileBrowserDialog({
               value={pathInput}
               onChange={(e) => setPathInput(e.target.value)}
               onKeyDown={handlePathInputKeyDown}
-              className="flex-1 font-mono text-sm"
+              className="flex-1 font-mono text-xs h-8"
               data-testid="path-input"
               disabled={loading}
             />
@@ -190,16 +255,46 @@ export function FileBrowserDialog({
               onClick={handleGoToPath}
               disabled={loading || !pathInput.trim()}
               data-testid="go-to-path-button"
+              className="h-8 px-2"
             >
-              <CornerDownLeft className="w-4 h-4 mr-1" />
+              <CornerDownLeft className="w-3.5 h-3.5 mr-1" />
               Go
             </Button>
           </div>
 
+          {/* Recent folders */}
+          {recentFolders.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 p-2 rounded-md bg-sidebar-accent/10 border border-sidebar-border">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mr-1">
+                <Clock className="w-3 h-3" />
+                <span>Recent:</span>
+              </div>
+              {recentFolders.map((folder) => (
+                <button
+                  key={folder}
+                  onClick={() => handleSelectRecent(folder)}
+                  className="group flex items-center gap-1 h-6 px-2 text-xs bg-sidebar-accent/20 hover:bg-sidebar-accent/40 rounded border border-sidebar-border transition-colors"
+                  disabled={loading}
+                  title={folder}
+                >
+                  <Folder className="w-3 h-3 text-brand-500 shrink-0" />
+                  <span className="truncate max-w-[120px]">{getFolderName(folder)}</span>
+                  <button
+                    onClick={(e) => handleRemoveRecent(e, folder)}
+                    className="ml-0.5 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+                    title="Remove from recent"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Drives selector (Windows only) */}
           {drives.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-sidebar-accent/10 border border-sidebar-border">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mr-2">
+            <div className="flex flex-wrap gap-1.5 p-2 rounded-md bg-sidebar-accent/10 border border-sidebar-border">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mr-1">
                 <HardDrive className="w-3 h-3" />
                 <span>Drives:</span>
               </div>
@@ -211,7 +306,7 @@ export function FileBrowserDialog({
                   }
                   size="sm"
                   onClick={() => handleSelectDrive(drive)}
-                  className="h-7 px-3 text-xs"
+                  className="h-6 px-2 text-xs"
                   disabled={loading}
                 >
                   {drive.replace("\\", "")}
@@ -221,57 +316,57 @@ export function FileBrowserDialog({
           )}
 
           {/* Current path breadcrumb */}
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-sidebar-accent/10 border border-sidebar-border">
+          <div className="flex items-center gap-1.5 p-2 rounded-md bg-sidebar-accent/10 border border-sidebar-border">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleGoHome}
-              className="h-7 px-2"
+              className="h-6 px-1.5"
               disabled={loading}
             >
-              <Home className="w-4 h-4" />
+              <Home className="w-3.5 h-3.5" />
             </Button>
             {parentPath && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleGoToParent}
-                className="h-7 px-2"
+                className="h-6 px-1.5"
                 disabled={loading}
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-3.5 h-3.5" />
               </Button>
             )}
-            <div className="flex-1 font-mono text-sm truncate text-muted-foreground">
+            <div className="flex-1 font-mono text-xs truncate text-muted-foreground">
               {currentPath || "Loading..."}
             </div>
           </div>
 
           {/* Directory list */}
-          <div className="flex-1 overflow-y-auto border border-sidebar-border rounded-lg">
+          <div className="flex-1 overflow-y-auto border border-sidebar-border rounded-md">
             {loading && (
-              <div className="flex items-center justify-center h-full p-8">
-                <div className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-center h-full p-4">
+                <div className="text-xs text-muted-foreground">
                   Loading directories...
                 </div>
               </div>
             )}
 
             {error && (
-              <div className="flex items-center justify-center h-full p-8">
-                <div className="text-sm text-destructive">{error}</div>
+              <div className="flex items-center justify-center h-full p-4">
+                <div className="text-xs text-destructive">{error}</div>
               </div>
             )}
 
             {warning && (
-              <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg mb-2">
-                <div className="text-sm text-yellow-500">{warning}</div>
+              <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-md mb-1">
+                <div className="text-xs text-yellow-500">{warning}</div>
               </div>
             )}
 
             {!loading && !error && !warning && directories.length === 0 && (
-              <div className="flex items-center justify-center h-full p-8">
-                <div className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-center h-full p-4">
+                <div className="text-xs text-muted-foreground">
                   No subdirectories found
                 </div>
               </div>
@@ -283,29 +378,29 @@ export function FileBrowserDialog({
                   <button
                     key={dir.path}
                     onClick={() => handleSelectDirectory(dir)}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-sidebar-accent/10 transition-colors text-left group"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-sidebar-accent/10 transition-colors text-left group"
                   >
-                    <Folder className="w-5 h-5 text-brand-500 shrink-0" />
-                    <span className="flex-1 truncate text-sm">{dir.name}</span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <Folder className="w-4 h-4 text-brand-500 shrink-0" />
+                    <span className="flex-1 truncate text-xs">{dir.name}</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="text-xs text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground">
             Paste a full path above, or click on folders to navigate. Press
             Enter or click Go to jump to a path.
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border pt-4 gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="border-t border-border pt-3 gap-2 mt-1">
+          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSelect} disabled={!currentPath || loading}>
-            <FolderOpen className="w-4 h-4 mr-2" />
+          <Button size="sm" onClick={handleSelect} disabled={!currentPath || loading}>
+            <FolderOpen className="w-3.5 h-3.5 mr-1.5" />
             Select Current Folder
           </Button>
         </DialogFooter>

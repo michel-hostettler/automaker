@@ -20,6 +20,8 @@ import { buildPromptWithImages } from "../lib/prompt-builder.js";
 import { resolveModelString, DEFAULT_MODELS } from "../lib/model-resolver.js";
 import { createAutoModeOptions } from "../lib/sdk-options.js";
 import { isAbortError, classifyError } from "../lib/error-handler.js";
+import { resolveDependencies, areDependenciesSatisfied } from "../lib/dependency-resolver.js";
+import type { Feature } from "./feature-loader.js";
 import {
   getFeatureDir,
   getFeaturesDir,
@@ -28,26 +30,6 @@ import {
 } from "../lib/automaker-paths.js";
 
 const execAsync = promisify(exec);
-
-interface Feature {
-  id: string;
-  category: string;
-  description: string;
-  steps?: string[];
-  status: string;
-  priority?: number;
-  spec?: string;
-  model?: string; // Model to use for this feature
-  imagePaths?: Array<
-    | string
-    | {
-        path: string;
-        filename?: string;
-        mimeType?: string;
-        [key: string]: unknown;
-      }
-  >;
-}
 
 interface RunningFeature {
   featureId: string;
@@ -1016,8 +998,10 @@ Format your response as a structured markdown document.`;
 
     try {
       const entries = await fs.readdir(featuresDir, { withFileTypes: true });
-      const features: Feature[] = [];
+      const allFeatures: Feature[] = [];
+      const pendingFeatures: Feature[] = [];
 
+      // Load all features (for dependency checking)
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const featurePath = path.join(
@@ -1028,12 +1012,15 @@ Format your response as a structured markdown document.`;
           try {
             const data = await fs.readFile(featurePath, "utf-8");
             const feature = JSON.parse(data);
+            allFeatures.push(feature);
+
+            // Track pending features separately
             if (
               feature.status === "pending" ||
               feature.status === "ready" ||
               feature.status === "backlog"
             ) {
-              features.push(feature);
+              pendingFeatures.push(feature);
             }
           } catch {
             // Skip invalid features
@@ -1041,8 +1028,15 @@ Format your response as a structured markdown document.`;
         }
       }
 
-      // Sort by priority
-      return features.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+      // Apply dependency-aware ordering
+      const { orderedFeatures } = resolveDependencies(pendingFeatures);
+
+      // Filter to only features with satisfied dependencies
+      const readyFeatures = orderedFeatures.filter(feature =>
+        areDependenciesSatisfied(feature, allFeatures)
+      );
+
+      return readyFeatures;
     } catch {
       return [];
     }
@@ -1286,17 +1280,13 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
     const outputPath = path.join(featureDirForOutput, "agent-output.md");
 
     // Incremental file writing state
-    let directoryCreated = false;
     let writeTimeout: ReturnType<typeof setTimeout> | null = null;
     const WRITE_DEBOUNCE_MS = 500; // Batch writes every 500ms
 
     // Helper to write current responseText to file
     const writeToFile = async (): Promise<void> => {
       try {
-        if (!directoryCreated) {
-          await fs.mkdir(path.dirname(outputPath), { recursive: true });
-          directoryCreated = true;
-        }
+        await fs.mkdir(path.dirname(outputPath), { recursive: true });
         await fs.writeFile(outputPath, responseText);
       } catch (error) {
         // Log but don't crash - file write errors shouldn't stop execution
@@ -1310,9 +1300,7 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
         clearTimeout(writeTimeout);
       }
       writeTimeout = setTimeout(() => {
-        writeToFile().catch((err) => {
-          console.error(`[AutoMode] Debounced write error:`, err);
-        });
+        writeToFile();
       }, WRITE_DEBOUNCE_MS);
     };
 
