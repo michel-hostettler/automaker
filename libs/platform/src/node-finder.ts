@@ -10,6 +10,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
+/** Pattern to match version directories (e.g., "v18.17.0", "18.17.0") */
+const VERSION_DIR_PATTERN = /^v?\d+/;
+
 /** Result of finding Node.js executable */
 export interface NodeFinderResult {
   /** Path to the Node.js executable */
@@ -50,7 +53,7 @@ function findNodeFromVersionManager(
   try {
     const versions = fs
       .readdirSync(basePath)
-      .filter((v) => /^v?\d+/.test(v))
+      .filter((v) => VERSION_DIR_PATTERN.test(v))
       // Semantic version sort - newest first using localeCompare with numeric option
       .sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -219,7 +222,10 @@ function findNodeWindows(homeDir: string): NodeFinderResult | null {
 /**
  * Try to find Node.js using shell commands (which/where)
  */
-function findNodeViaShell(platform: NodeJS.Platform): NodeFinderResult | null {
+function findNodeViaShell(
+  platform: NodeJS.Platform,
+  logger: (message: string) => void = () => {}
+): NodeFinderResult | null {
   try {
     const command = platform === 'win32' ? 'where node' : 'which node';
     const result = execSync(command, {
@@ -238,6 +244,7 @@ function findNodeViaShell(platform: NodeJS.Platform): NodeFinderResult | null {
     }
   } catch {
     // Shell command failed (likely when launched from desktop without PATH)
+    logger('Shell command failed to find Node.js (expected when launched from desktop)');
   }
 
   return null;
@@ -293,7 +300,7 @@ export function findNodeExecutable(options: NodeFinderOptions = {}): NodeFinderR
   }
 
   // Fallback - try shell resolution (works when launched from terminal)
-  result = findNodeViaShell(platform);
+  result = findNodeViaShell(platform, logger);
   if (result) {
     logger(`Found Node.js via ${result.source} at: ${result.nodePath}`);
     return result;
@@ -342,5 +349,9 @@ export function buildEnhancedPath(nodePath: string, currentPath: string = ''): s
   }
 
   // Use platform-appropriate path separator
+  // Handle empty currentPath without adding trailing delimiter
+  if (!currentPath) {
+    return nodeDir;
+  }
   return `${nodeDir}${path.delimiter}${currentPath}`;
 }

@@ -87,12 +87,12 @@ describe('node-finder', () => {
       expect(result).toBe(currentPath);
     });
 
-    it('should handle empty currentPath', () => {
+    it('should handle empty currentPath without trailing delimiter', () => {
       const nodePath = '/opt/homebrew/bin/node';
 
       const result = buildEnhancedPath(nodePath, '');
 
-      expect(result).toBe(`/opt/homebrew/bin${delimiter}`);
+      expect(result).toBe('/opt/homebrew/bin');
     });
 
     it('should handle Windows-style paths', () => {
@@ -118,7 +118,7 @@ describe('node-finder', () => {
 
       const result = buildEnhancedPath(nodePath);
 
-      expect(result).toBe(`/usr/local/bin${delimiter}`);
+      expect(result).toBe('/usr/local/bin');
     });
   });
 });
