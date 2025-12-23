@@ -29,14 +29,16 @@ export function useProjectPicker({
     return projects.filter((project) => project.name.toLowerCase().includes(query));
   }, [projects, projectSearchQuery]);
 
-  const getCurrentProjectIndex = () => {
-    return currentProject ? filteredProjects.findIndex((p) => p.id === currentProject.id) : -1;
-  };
-
-  // Reset selection when filtered results change
+  // Reset selection when filtered results change and project picker is open
   useEffect(() => {
+    if (!isProjectPickerOpen) {
+      return;
+    }
+
     if (!projectSearchQuery.trim()) {
-      const currentIndex = getCurrentProjectIndex();
+      const currentIndex = currentProject
+        ? filteredProjects.findIndex((p) => p.id === currentProject.id)
+        : -1;
       if (currentIndex !== -1) {
         setSelectedProjectIndex(currentIndex);
         return;
@@ -44,7 +46,7 @@ export function useProjectPicker({
     }
 
     setSelectedProjectIndex(0);
-  }, [filteredProjects.length, projectSearchQuery, currentProject]);
+  }, [isProjectPickerOpen, filteredProjects.length, projectSearchQuery, currentProject]);
 
   // Reset search query when dropdown closes, set to current project index when it opens
   useEffect(() => {
@@ -52,12 +54,6 @@ export function useProjectPicker({
       setProjectSearchQuery('');
       setSelectedProjectIndex(0);
     } else {
-      // Set the selected project index to the current project index
-      const currentIndex = getCurrentProjectIndex();
-      if (currentIndex !== -1) {
-        setSelectedProjectIndex(currentIndex);
-      }
-
       // Focus the search input when dropdown opens
       // Small delay to ensure the dropdown is rendered
       setTimeout(() => {
