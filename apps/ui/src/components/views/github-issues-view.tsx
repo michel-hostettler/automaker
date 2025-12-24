@@ -846,15 +846,18 @@ function IssueRow({
   cachedValidation,
   isValidating,
 }: IssueRowProps) {
+  // Check if validation exists and calculate staleness
+  const validationHoursSince = cachedValidation
+    ? (Date.now() - new Date(cachedValidation.validatedAt).getTime()) / (1000 * 60 * 60)
+    : null;
+  const isValidationStale = validationHoursSince !== null && validationHoursSince > 24;
+
   // Check if validation is unviewed (exists, not stale, not viewed)
   const hasUnviewedValidation =
-    cachedValidation &&
-    !cachedValidation.viewedAt &&
-    (() => {
-      const hoursSince =
-        (Date.now() - new Date(cachedValidation.validatedAt).getTime()) / (1000 * 60 * 60);
-      return hoursSince <= 24;
-    })();
+    cachedValidation && !cachedValidation.viewedAt && !isValidationStale;
+
+  // Check if validation has been viewed (exists and was viewed)
+  const hasViewedValidation = cachedValidation && cachedValidation.viewedAt && !isValidationStale;
   return (
     <div
       className={cn(
@@ -925,6 +928,14 @@ function IssueRow({
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-in fade-in duration-200">
               <Sparkles className="h-3 w-3" />
               Analysis Ready
+            </span>
+          )}
+
+          {/* Viewed validation indicator */}
+          {!isValidating && hasViewedValidation && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
+              <CheckCircle className="h-3 w-3" />
+              Validated
             </span>
           )}
         </div>
