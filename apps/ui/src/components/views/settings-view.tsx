@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/app-store';
 
-import { useCliStatus, useSettingsView } from './settings-view/hooks';
+import { useSettingsView } from './settings-view/hooks';
 import { NAV_ITEMS } from './settings-view/config/navigation';
 import { SettingsHeader } from './settings-view/components/settings-header';
 import { KeyboardMapDialog } from './settings-view/components/keyboard-map-dialog';
 import { DeleteProjectDialog } from './settings-view/components/delete-project-dialog';
 import { SettingsNavigation } from './settings-view/components/settings-navigation';
 import { ApiKeysSection } from './settings-view/api-keys/api-keys-section';
-import { ClaudeUsageSection } from './settings-view/api-keys/claude-usage-section';
-import { ClaudeCliStatus } from './settings-view/cli-status/claude-cli-status';
-import { ClaudeMdSettings } from './settings-view/claude/claude-md-settings';
 import { AIEnhancementSection } from './settings-view/ai-enhancement';
 import { AppearanceSection } from './settings-view/appearance/appearance-section';
 import { TerminalSection } from './settings-view/terminal/terminal-section';
@@ -18,6 +15,7 @@ import { AudioSection } from './settings-view/audio/audio-section';
 import { KeyboardShortcutsSection } from './settings-view/keyboard-shortcuts/keyboard-shortcuts-section';
 import { FeatureDefaultsSection } from './settings-view/feature-defaults/feature-defaults-section';
 import { DangerZoneSection } from './settings-view/danger-zone/danger-zone-section';
+import { ProviderTabs } from './settings-view/providers';
 import type { Project as SettingsProject, Theme } from './settings-view/shared/types';
 import type { Project as ElectronProject } from '@/lib/electron';
 
@@ -45,18 +43,9 @@ export function SettingsView() {
     defaultAIProfileId,
     setDefaultAIProfileId,
     aiProfiles,
-    apiKeys,
     validationModel,
     setValidationModel,
-    autoLoadClaudeMd,
-    setAutoLoadClaudeMd,
   } = useAppStore();
-
-  // Hide usage tracking when using API key (only show for Claude Code CLI users)
-  // Also hide on Windows for now (CLI usage command not supported)
-  const isWindows =
-    typeof navigator !== 'undefined' && navigator.platform?.toLowerCase().includes('win');
-  const showUsageTracking = !apiKeys.anthropic && !isWindows;
 
   // Convert electron Project to settings-view Project type
   const convertProject = (project: ElectronProject | null): SettingsProject | null => {
@@ -85,9 +74,6 @@ export function SettingsView() {
     }
   };
 
-  // Use CLI status hook
-  const { claudeCliStatus, isCheckingClaudeCli, handleRefreshClaudeCli } = useCliStatus();
-
   // Use settings view navigation hook
   const { activeView, navigateTo } = useSettingsView();
 
@@ -97,21 +83,9 @@ export function SettingsView() {
   // Render the active section based on current view
   const renderActiveSection = () => {
     switch (activeView) {
-      case 'claude':
-        return (
-          <div className="space-y-6">
-            <ClaudeCliStatus
-              status={claudeCliStatus}
-              isChecking={isCheckingClaudeCli}
-              onRefresh={handleRefreshClaudeCli}
-            />
-            <ClaudeMdSettings
-              autoLoadClaudeMd={autoLoadClaudeMd}
-              onAutoLoadClaudeMdChange={setAutoLoadClaudeMd}
-            />
-            {showUsageTracking && <ClaudeUsageSection />}
-          </div>
-        );
+      case 'providers':
+      case 'claude': // Backwards compatibility
+        return <ProviderTabs defaultTab={activeView === 'claude' ? 'claude' : 'claude'} />;
       case 'ai-enhancement':
         return <AIEnhancementSection />;
       case 'appearance':
