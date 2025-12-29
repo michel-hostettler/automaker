@@ -10,7 +10,7 @@
  */
 
 import { ProviderFactory } from '../providers/provider-factory.js';
-import type { ExecuteOptions, Feature } from '@automaker/types';
+import type { ExecuteOptions, Feature, ModelProvider } from '@automaker/types';
 import {
   buildPromptWithImages,
   isAbortError,
@@ -317,7 +317,7 @@ interface RunningFeature {
   isAutoMode: boolean;
   startTime: number;
   model?: string;
-  provider?: 'claude' | 'cursor';
+  provider?: ModelProvider;
 }
 
 interface AutoLoopState {
@@ -1238,7 +1238,7 @@ Format your response as a structured markdown document.`;
     projectName: string;
     isAutoMode: boolean;
     model?: string;
-    provider?: 'claude' | 'cursor';
+    provider?: ModelProvider;
   }> {
     return Array.from(this.runningFeatures.values()).map((rf) => ({
       featureId: rf.featureId,

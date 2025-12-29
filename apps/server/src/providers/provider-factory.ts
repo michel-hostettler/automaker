@@ -10,16 +10,16 @@ import { BaseProvider } from './base-provider.js';
 import { ClaudeProvider } from './claude-provider.js';
 import { CursorProvider } from './cursor-provider.js';
 import type { InstallationStatus, ModelDefinition } from './types.js';
-import { CURSOR_MODEL_MAP } from '@automaker/types';
+import { CURSOR_MODEL_MAP, type ModelProvider } from '@automaker/types';
 
 export class ProviderFactory {
   /**
    * Determine which provider to use for a given model
    *
    * @param model Model identifier
-   * @returns Provider name ('claude' | 'cursor')
+   * @returns Provider name (ModelProvider type)
    */
-  static getProviderNameForModel(model: string): 'claude' | 'cursor' {
+  static getProviderNameForModel(model: string): ModelProvider {
     const lowerModel = model.toLowerCase();
 
     // Check for explicit cursor prefix
