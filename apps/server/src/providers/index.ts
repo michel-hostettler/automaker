@@ -2,8 +2,14 @@
  * Provider exports
  */
 
-// Base provider
+// Base providers
 export { BaseProvider } from './base-provider.js';
+export {
+  CliProvider,
+  type SpawnStrategy,
+  type CliSpawnConfig,
+  type CliErrorInfo,
+} from './cli-provider.js';
 export type {
   ProviderConfig,
   ExecuteOptions,
