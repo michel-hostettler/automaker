@@ -89,6 +89,7 @@ export async function setupProjectWithFixture(
         currentView: 'board',
         theme: 'dark',
         sidebarOpen: true,
+        skipSandboxWarning: true,
         apiKeys: { anthropic: '', google: '' },
         chatSessions: [],
         chatHistoryOpen: false,

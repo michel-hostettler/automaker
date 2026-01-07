@@ -346,6 +346,7 @@ export async function setupProjectWithPath(page: Page, projectPath: string): Pro
         currentView: 'board',
         theme: 'dark',
         sidebarOpen: true,
+        skipSandboxWarning: true,
         apiKeys: { anthropic: '', google: '' },
         chatSessions: [],
         chatHistoryOpen: false,
@@ -373,6 +374,9 @@ export async function setupProjectWithPath(page: Page, projectPath: string): Pro
       version: 0, // setup-store.ts doesn't specify a version, so zustand defaults to 0
     };
     localStorage.setItem('automaker-setup', JSON.stringify(setupState));
+
+    // Disable splash screen in tests
+    sessionStorage.setItem('automaker-splash-shown', 'true');
   }, projectPath);
 }
 
@@ -399,6 +403,7 @@ export async function setupProjectWithPathNoWorktrees(
         currentView: 'board',
         theme: 'dark',
         sidebarOpen: true,
+        skipSandboxWarning: true,
         apiKeys: { anthropic: '', google: '' },
         chatSessions: [],
         chatHistoryOpen: false,
@@ -424,6 +429,9 @@ export async function setupProjectWithPathNoWorktrees(
       version: 0, // setup-store.ts doesn't specify a version, so zustand defaults to 0
     };
     localStorage.setItem('automaker-setup', JSON.stringify(setupState));
+
+    // Disable splash screen in tests
+    sessionStorage.setItem('automaker-splash-shown', 'true');
   }, projectPath);
 }
 
@@ -451,6 +459,7 @@ export async function setupProjectWithStaleWorktree(
         currentView: 'board',
         theme: 'dark',
         sidebarOpen: true,
+        skipSandboxWarning: true,
         apiKeys: { anthropic: '', google: '' },
         chatSessions: [],
         chatHistoryOpen: false,
@@ -479,6 +488,9 @@ export async function setupProjectWithStaleWorktree(
       version: 0, // setup-store.ts doesn't specify a version, so zustand defaults to 0
     };
     localStorage.setItem('automaker-setup', JSON.stringify(setupState));
+
+    // Disable splash screen in tests
+    sessionStorage.setItem('automaker-splash-shown', 'true');
   }, projectPath);
 }
 
