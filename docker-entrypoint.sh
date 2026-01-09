@@ -41,5 +41,22 @@ EOF
     chown -R automaker:automaker /home/automaker/.config
 fi
 
+# Ensure GitHub CLI config directory has correct permissions
+if [ -d "/home/automaker/.config/gh" ]; then
+    chown -R automaker:automaker /home/automaker/.config/gh
+    chmod 700 /home/automaker/.config/gh
+    chmod 600 /home/automaker/.config/gh/* 2>/dev/null || true
+fi
+
+# Fix permissions on projects directory (handles files created by root via docker exec)
+if [ -d "/projects" ]; then
+    chown -R automaker:automaker /projects
+fi
+
+# Fix permissions on data directory
+if [ -d "/data" ]; then
+    chown -R automaker:automaker /data
+fi
+
 # Switch to automaker user and execute the command
 exec gosu automaker "$@"
