@@ -73,6 +73,12 @@ const getServerUrl = (): string => {
   if (typeof window !== 'undefined') {
     const envUrl = import.meta.env.VITE_SERVER_URL;
     if (envUrl) return envUrl;
+
+    // In web mode, dynamically use the current hostname with API port
+    // This allows accessing from any IP/hostname without hardcoding
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}:3008`;
   }
   return 'http://localhost:3008';
 };
