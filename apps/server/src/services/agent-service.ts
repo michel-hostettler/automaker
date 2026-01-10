@@ -57,6 +57,7 @@ interface Session {
   thinkingLevel?: ThinkingLevel; // Thinking level for Claude models
   sdkSessionId?: string; // Claude SDK session ID for conversation continuity
   promptQueue: QueuedPrompt[]; // Queue of prompts to auto-run after current task
+  username?: string; // Username for multi-user event filtering
 }
 
 interface SessionMetadata {
@@ -92,14 +93,26 @@ export class AgentService {
   }
 
   /**
+   * Set the username for a session (for multi-user event filtering)
+   */
+  setSessionUsername(sessionId: string, username: string | undefined): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.username = username;
+    }
+  }
+
+  /**
    * Start or resume a conversation
    */
   async startConversation({
     sessionId,
     workingDirectory,
+    username,
   }: {
     sessionId: string;
     workingDirectory?: string;
+    username?: string;
   }) {
     if (!this.sessions.has(sessionId)) {
       const messages = await this.loadSession(sessionId);
@@ -123,7 +136,11 @@ export class AgentService {
         workingDirectory: resolvedWorkingDirectory,
         sdkSessionId: sessionMetadata?.sdkSessionId, // Load persisted SDK session ID
         promptQueue,
+        username, // For multi-user event filtering
       });
+    } else if (username) {
+      // Update username on existing session
+      this.setSessionUsername(sessionId, username);
     }
 
     const session = this.sessions.get(sessionId)!;
@@ -144,6 +161,7 @@ export class AgentService {
     imagePaths,
     model,
     thinkingLevel,
+    username,
   }: {
     sessionId: string;
     message: string;
@@ -151,11 +169,17 @@ export class AgentService {
     imagePaths?: string[];
     model?: string;
     thinkingLevel?: ThinkingLevel;
+    username?: string;
   }) {
     const session = this.sessions.get(sessionId);
     if (!session) {
       this.logger.error('ERROR: Session not found:', sessionId);
       throw new Error(`Session ${sessionId} not found`);
+    }
+
+    // Update username if provided (for multi-user event filtering)
+    if (username && !session.username) {
+      session.username = username;
     }
 
     if (session.isRunning) {
@@ -790,7 +814,10 @@ export class AgentService {
   }
 
   private emitAgentEvent(sessionId: string, data: Record<string, unknown>): void {
-    this.events.emit('agent:stream', { sessionId, ...data });
+    // Include targetUser for multi-user event filtering
+    const session = this.sessions.get(sessionId);
+    const targetUser = session?.username;
+    this.events.emit('agent:stream', { sessionId, targetUser, ...data });
   }
 
   private async getSystemPrompt(): Promise<string> {

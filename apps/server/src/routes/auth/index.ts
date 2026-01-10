@@ -20,8 +20,10 @@ import {
   invalidateSession,
   getSessionCookieOptions,
   getSessionCookieName,
+  getUserCookieName,
   isRequestAuthenticated,
   createWsConnectionToken,
+  getSessionUsername,
 } from '../../lib/auth.js';
 
 // Rate limiting configuration
@@ -120,10 +122,15 @@ export function createAuthRoutes(): Router {
    */
   router.get('/status', (req, res) => {
     const authenticated = isRequestAuthenticated(req);
+    const cookieName = getSessionCookieName();
+    const sessionToken = req.cookies?.[cookieName] as string | undefined;
+    const username = sessionToken ? getSessionUsername(sessionToken) : null;
+
     res.json({
       success: true,
       authenticated,
       required: true,
+      username: username || undefined,
     });
   });
 
@@ -152,12 +159,33 @@ export function createAuthRoutes(): Router {
       }
     }
 
-    const { apiKey } = req.body as { apiKey?: string };
+    const { apiKey, username } = req.body as { apiKey?: string; username?: string };
 
     if (!apiKey) {
       res.status(400).json({
         success: false,
         error: 'API key is required.',
+      });
+      return;
+    }
+
+    if (!username || username.trim().length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Username is required.',
+      });
+      return;
+    }
+
+    // Sanitize username (alphanumeric, dash, underscore only, max 32 chars)
+    const sanitizedUsername = username
+      .trim()
+      .slice(0, 32)
+      .replace(/[^a-zA-Z0-9_-]/g, '');
+    if (sanitizedUsername.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Username must contain at least one alphanumeric character.',
       });
       return;
     }
@@ -175,17 +203,24 @@ export function createAuthRoutes(): Router {
       return;
     }
 
-    // Create session and set cookie
-    const sessionToken = await createSession();
+    // Create session and set cookies
+    const sessionToken = await createSession(sanitizedUsername);
     const cookieOptions = getSessionCookieOptions();
     const cookieName = getSessionCookieName();
+    const userCookieName = getUserCookieName();
 
     res.cookie(cookieName, sessionToken, cookieOptions);
+    // Set a non-httpOnly cookie for username so client can read it
+    res.cookie(userCookieName, sanitizedUsername, {
+      ...cookieOptions,
+      httpOnly: false, // Allow JavaScript to read this cookie
+    });
     res.json({
       success: true,
       message: 'Logged in successfully.',
       // Return token for explicit header-based auth (works around cross-origin cookie issues)
       token: sessionToken,
+      username: sanitizedUsername,
     });
   });
 
@@ -223,15 +258,22 @@ export function createAuthRoutes(): Router {
    */
   router.post('/logout', async (req, res) => {
     const cookieName = getSessionCookieName();
+    const userCookieName = getUserCookieName();
     const sessionToken = req.cookies?.[cookieName] as string | undefined;
 
     if (sessionToken) {
       await invalidateSession(sessionToken);
     }
 
-    // Clear the cookie
+    // Clear the cookies
     res.clearCookie(cookieName, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+    res.clearCookie(userCookieName, {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       path: '/',

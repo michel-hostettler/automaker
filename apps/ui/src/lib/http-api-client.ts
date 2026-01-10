@@ -118,6 +118,39 @@ export const clearSessionToken = (): void => {
   cachedSessionToken = null;
 };
 
+// Cached username (set after login)
+let cachedUsername: string | null = null;
+
+// Get the current username
+export const getUsername = (): string | null => {
+  // Try cached value first
+  if (cachedUsername) return cachedUsername;
+
+  // Try to read from cookie
+  if (typeof document !== 'undefined') {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'automaker_user' && value) {
+        cachedUsername = decodeURIComponent(value);
+        return cachedUsername;
+      }
+    }
+  }
+
+  return null;
+};
+
+// Set the username (called after login)
+export const setUsername = (username: string | null): void => {
+  cachedUsername = username;
+};
+
+// Clear the username (called on logout)
+export const clearUsername = (): void => {
+  cachedUsername = null;
+};
+
 /**
  * Check if we're running in Electron mode
  */
@@ -231,26 +264,30 @@ export const checkAuthStatus = async (): Promise<{
 };
 
 /**
- * Login with API key (for web mode)
+ * Login with API key and username (for web mode)
  * After login succeeds, verifies the session is actually working by making
  * a request to an authenticated endpoint.
  */
 export const login = async (
-  apiKey: string
-): Promise<{ success: boolean; error?: string; token?: string }> => {
+  apiKey: string,
+  username: string
+): Promise<{ success: boolean; error?: string; token?: string; username?: string }> => {
   try {
     const response = await fetch(`${getServerUrl()}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ apiKey }),
+      body: JSON.stringify({ apiKey, username }),
     });
     const data = await response.json();
 
-    // Store the session token if login succeeded
+    // Store the session token and username if login succeeded
     if (data.success && data.token) {
       setSessionToken(data.token);
-      logger.info('Session token stored after login');
+      if (data.username) {
+        setUsername(data.username);
+      }
+      logger.info('Session token and username stored after login');
 
       // Verify the session is actually working by making a request to an authenticated endpoint
       const verified = await verifySession();
@@ -314,9 +351,10 @@ export const logout = async (): Promise<{ success: boolean }> => {
       credentials: 'include',
     });
 
-    // Clear the cached session token
+    // Clear the cached session token and username
     clearSessionToken();
-    logger.info('Session token cleared on logout');
+    clearUsername();
+    logger.info('Session token and username cleared on logout');
 
     return await response.json();
   } catch (error) {

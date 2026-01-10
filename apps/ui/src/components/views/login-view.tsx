@@ -1,23 +1,19 @@
 /**
  * Login View - Web mode authentication
  *
- * Prompts user to enter the API key shown in server console.
+ * Prompts user to enter username and API key shown in server console.
  * On successful login, sets an HTTP-only session cookie.
+ * Username is used to namespace localStorage for multi-user support.
  */
 
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { login } from '@/lib/http-api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { KeyRound, AlertCircle, Loader2 } from 'lucide-react';
-import { useAuthStore } from '@/store/auth-store';
-import { useSetupStore } from '@/store/setup-store';
+import { KeyRound, AlertCircle, Loader2, User } from 'lucide-react';
 
 export function LoginView() {
-  const navigate = useNavigate();
-  const setAuthState = useAuthStore((s) => s.setAuthState);
-  const setupComplete = useSetupStore((s) => s.setupComplete);
+  const [username, setUsername] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,15 +24,13 @@ export function LoginView() {
     setIsLoading(true);
 
     try {
-      const result = await login(apiKey.trim());
+      const result = await login(apiKey.trim(), username.trim());
       if (result.success) {
-        // Mark as authenticated for this session (cookie-based auth)
-        setAuthState({ isAuthenticated: true, authChecked: true });
-
-        // After auth, determine if setup is needed or go to app
-        navigate({ to: setupComplete ? '/' : '/setup' });
+        // Reload the page to reinitialize stores with username-namespaced storage
+        // This ensures each user has their own localStorage namespace
+        window.location.href = '/';
       } else {
-        setError(result.error || 'Invalid API key');
+        setError(result.error || 'Invalid API key or username');
       }
     } catch (err) {
       setError('Failed to connect to server');
@@ -51,16 +45,36 @@ export function LoginView() {
         {/* Header */}
         <div className="text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <KeyRound className="h-8 w-8 text-primary" />
+            <User className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="mt-6 text-2xl font-bold tracking-tight">Authentication Required</h1>
+          <h1 className="mt-6 text-2xl font-bold tracking-tight">Welcome to Automaker</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter the API key shown in the server console to continue.
+            Enter your username and the API key shown in the server console.
           </p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label htmlFor="username" className="text-sm font-medium">
+              Username
+            </label>
+            <Input
+              id="username"
+              type="text"
+              placeholder="Enter your username..."
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isLoading}
+              autoFocus
+              autoComplete="username"
+              data-testid="login-username-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Your username is used to save your preferences and session state.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <label htmlFor="apiKey" className="text-sm font-medium">
               API Key
@@ -72,7 +86,6 @@ export function LoginView() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               disabled={isLoading}
-              autoFocus
               className="font-mono"
               data-testid="login-api-key-input"
             />
@@ -88,7 +101,7 @@ export function LoginView() {
           <Button
             type="submit"
             className="w-full"
-            disabled={isLoading || !apiKey.trim()}
+            disabled={isLoading || !apiKey.trim() || !username.trim()}
             data-testid="login-submit-button"
           >
             {isLoading ? (

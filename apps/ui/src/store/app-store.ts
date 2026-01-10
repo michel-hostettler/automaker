@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Project, TrashedProject } from '@/lib/electron';
+import { getUsername } from '@/lib/http-api-client';
 import type {
   Feature as BaseFeature,
   FeatureImagePath,
@@ -2877,7 +2878,9 @@ export const useAppStore = create<AppState & AppActions>()(
       reset: () => set(initialState),
     }),
     {
-      name: 'automaker-storage',
+      // Storage key is namespaced by username for multi-user support
+      // After login, a page reload is needed to load the correct user's storage
+      name: `automaker-storage${getUsername() ? `-${getUsername()}` : ''}`,
       version: 2, // Increment when making breaking changes to persisted state
       // Custom merge function to properly restore terminal settings on every load
       // The default shallow merge doesn't work because we persist terminalSettings

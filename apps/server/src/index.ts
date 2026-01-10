@@ -20,7 +20,12 @@ import { initAllowedPaths } from '@automaker/platform';
 import { createLogger } from '@automaker/utils';
 
 const logger = createLogger('Server');
-import { authMiddleware, validateWsConnectionToken, checkRawAuthentication } from './lib/auth.js';
+import {
+  authMiddleware,
+  validateWsConnectionToken,
+  checkRawAuthentication,
+  getUsernameFromRawCredentials,
+} from './lib/auth.js';
 import { requireJsonContentType } from './middleware/require-json-content-type.js';
 import { createAuthRoutes } from './routes/auth/index.js';
 import { createFsRoutes } from './routes/fs/index.js';
@@ -232,6 +237,25 @@ const terminalWss = new WebSocketServer({ noServer: true });
 const terminalService = getTerminalService();
 
 /**
+ * Parse cookies from WebSocket request
+ */
+function parseWebSocketCookies(
+  request: import('http').IncomingMessage
+): Record<string, string | undefined> {
+  const cookieHeader = request.headers.cookie;
+  return cookieHeader ? cookie.parse(cookieHeader) : {};
+}
+
+/**
+ * Get username from WebSocket request
+ * Returns null for Electron mode connections (API key auth without session)
+ */
+function getWebSocketUsername(request: import('http').IncomingMessage): string | null {
+  const cookies = parseWebSocketCookies(request);
+  return getUsernameFromRawCredentials(cookies);
+}
+
+/**
  * Authenticate WebSocket upgrade requests
  * Checks for API key in header/query, session token in header/query, OR valid session cookie
  */
@@ -245,8 +269,7 @@ function authenticateWebSocket(request: import('http').IncomingMessage): boolean
   });
 
   // Parse cookies from header
-  const cookieHeader = request.headers.cookie;
-  const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
+  const cookies = parseWebSocketCookies(request);
 
   // Use shared authentication logic for standard auth methods
   if (
@@ -294,17 +317,29 @@ server.on('upgrade', (request, socket, head) => {
 });
 
 // Events WebSocket connection handler
-wss.on('connection', (ws: WebSocket) => {
-  logger.info('Client connected, ready state:', ws.readyState);
+wss.on('connection', (ws: WebSocket, request: import('http').IncomingMessage) => {
+  // Extract username from the connection for user-specific event filtering
+  const connectionUsername = getWebSocketUsername(request);
+  logger.info('Client connected, ready state:', ws.readyState, 'username:', connectionUsername);
 
-  // Subscribe to all events and forward to this client
-  const unsubscribe = events.subscribe((type, payload) => {
+  // Subscribe to events with user filtering support
+  const unsubscribe = events.subscribeWithUserFilter((type, payload, targetUser) => {
+    // Filter events by user if targetUser is specified
+    // Events without targetUser are broadcast to all users (shared events)
+    // Electron mode connections (no username) receive all events
+    if (targetUser && connectionUsername && targetUser !== connectionUsername) {
+      // Skip this event - it's for a different user
+      return;
+    }
+
     logger.info('Event received:', {
       type,
       hasPayload: !!payload,
       payloadKeys: payload ? Object.keys(payload) : [],
       wsReadyState: ws.readyState,
       wsOpen: ws.readyState === WebSocket.OPEN,
+      targetUser,
+      connectionUsername,
     });
 
     if (ws.readyState === WebSocket.OPEN) {
@@ -321,7 +356,7 @@ wss.on('connection', (ws: WebSocket) => {
   });
 
   ws.on('close', () => {
-    logger.info('Client disconnected');
+    logger.info('Client disconnected, username:', connectionUsername);
     unsubscribe();
   });
 

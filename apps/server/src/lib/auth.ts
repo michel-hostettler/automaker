@@ -24,7 +24,16 @@ const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const WS_TOKEN_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes for WebSocket connection tokens
 
 // Session store - persisted to file for survival across server restarts
-const validSessions = new Map<string, { createdAt: number; expiresAt: number }>();
+// Now includes username for multi-user support
+interface SessionData {
+  createdAt: number;
+  expiresAt: number;
+  username: string;
+}
+const validSessions = new Map<string, SessionData>();
+
+// User cookie name for client-side access
+const USER_COOKIE_NAME = 'automaker_user';
 
 // Short-lived WebSocket connection tokens (in-memory only, not persisted)
 const wsConnectionTokens = new Map<string, { createdAt: number; expiresAt: number }>();
@@ -46,8 +55,9 @@ function loadSessions(): void {
   try {
     if (secureFs.existsSync(SESSIONS_FILE)) {
       const data = secureFs.readFileSync(SESSIONS_FILE, 'utf-8') as string;
+      // Support both old format (without username) and new format (with username)
       const sessions = JSON.parse(data) as Array<
-        [string, { createdAt: number; expiresAt: number }]
+        [string, { createdAt: number; expiresAt: number; username?: string }]
       >;
       const now = Date.now();
       let loadedCount = 0;
@@ -56,7 +66,11 @@ function loadSessions(): void {
       for (const [token, session] of sessions) {
         // Only load non-expired sessions
         if (session.expiresAt > now) {
-          validSessions.set(token, session);
+          // Ensure username exists (default to 'anonymous' for old sessions)
+          validSessions.set(token, {
+            ...session,
+            username: session.username || 'anonymous',
+          });
           loadedCount++;
         } else {
           expiredCount++;
@@ -158,15 +172,33 @@ function generateSessionToken(): string {
 /**
  * Create a new session and return the token
  */
-export async function createSession(): Promise<string> {
+export async function createSession(username: string): Promise<string> {
   const token = generateSessionToken();
   const now = Date.now();
   validSessions.set(token, {
     createdAt: now,
     expiresAt: now + SESSION_MAX_AGE_MS,
+    username,
   });
   await saveSessions(); // Persist to file
   return token;
+}
+
+/**
+ * Get the username associated with a session token
+ */
+export function getSessionUsername(token: string): string | null {
+  const session = validSessions.get(token);
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) return null;
+  return session.username || null;
+}
+
+/**
+ * Get the user cookie name for client-side access
+ */
+export function getUserCookieName(): string {
+  return USER_COOKIE_NAME;
 }
 
 /**
@@ -410,4 +442,32 @@ export function checkRawAuthentication(
   cookies: Record<string, string | undefined>
 ): boolean {
   return checkAuthentication(headers, query, cookies).authenticated;
+}
+
+/**
+ * Get username from raw credentials
+ * Used for WebSocket connections where we don't have Express request objects
+ */
+export function getUsernameFromRawCredentials(
+  cookies: Record<string, string | undefined>
+): string | null {
+  // Check for session cookie and get username from session
+  const sessionToken = cookies[SESSION_COOKIE_NAME];
+  if (sessionToken) {
+    return getSessionUsername(sessionToken);
+  }
+  return null;
+}
+
+/**
+ * Get username from Express request
+ * Returns the username associated with the current session, or null for API key auth
+ */
+export function getRequestUsername(req: Request): string | null {
+  const cookies = (req.cookies || {}) as Record<string, string | undefined>;
+  const sessionToken = cookies[SESSION_COOKIE_NAME];
+  if (sessionToken) {
+    return getSessionUsername(sessionToken);
+  }
+  return null;
 }

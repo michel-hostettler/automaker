@@ -6,6 +6,8 @@ import type { Request, Response } from 'express';
 import { AgentService } from '../../../services/agent-service.js';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
+import { getRequestUsername } from '../../../lib/auth.js';
+
 const logger = createLogger('Agent');
 
 export function createStartHandler(agentService: AgentService) {
@@ -16,6 +18,9 @@ export function createStartHandler(agentService: AgentService) {
         workingDirectory?: string;
       };
 
+      // Get username from session for multi-user event filtering
+      const username = getRequestUsername(req) || undefined;
+
       if (!sessionId) {
         res.status(400).json({ success: false, error: 'sessionId is required' });
         return;
@@ -24,6 +29,7 @@ export function createStartHandler(agentService: AgentService) {
       const result = await agentService.startConversation({
         sessionId,
         workingDirectory,
+        username,
       });
 
       res.json(result);
