@@ -176,9 +176,11 @@ COPY libs ./libs
 COPY apps/ui ./apps/ui
 
 # Build packages in dependency order, then build UI
-# VITE_SERVER_URL tells the UI where to find the API server
-# Use ARG to allow overriding at build time: --build-arg VITE_SERVER_URL=http://api.example.com
-ARG VITE_SERVER_URL=http://localhost:3008
+# VITE_SERVER_URL is intentionally NOT set by default - the UI will dynamically
+# use window.location.hostname to connect to the API server
+# This allows accessing the app from any IP/hostname without hardcoding
+# Override at build time if needed: --build-arg VITE_SERVER_URL=http://api.example.com
+ARG VITE_SERVER_URL=
 ENV VITE_SKIP_ELECTRON=true
 ENV VITE_SERVER_URL=${VITE_SERVER_URL}
 RUN npm run build:packages && npm run build --workspace=apps/ui
