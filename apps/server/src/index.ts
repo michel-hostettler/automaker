@@ -131,9 +131,18 @@ app.use(
         return;
       }
 
-      // If CORS_ORIGIN is set, use it (can be comma-separated list)
-      const allowedOrigins = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim());
-      if (allowedOrigins && allowedOrigins.length > 0 && allowedOrigins[0] !== '*') {
+      // If CORS_ORIGIN is set, use it (can be comma-separated list or '*' for all)
+      const corsOrigin = process.env.CORS_ORIGIN?.trim();
+
+      // If CORS_ORIGIN is '*', allow any origin (useful for Docker/LAN access)
+      if (corsOrigin === '*') {
+        callback(null, origin);
+        return;
+      }
+
+      // If CORS_ORIGIN is a specific list, check against it
+      if (corsOrigin) {
+        const allowedOrigins = corsOrigin.split(',').map((o) => o.trim());
         if (allowedOrigins.includes(origin)) {
           callback(null, origin);
         } else {
@@ -142,7 +151,7 @@ app.use(
         return;
       }
 
-      // For local development, allow localhost origins
+      // For local development (no CORS_ORIGIN set), allow localhost origins
       if (
         origin.startsWith('http://localhost:') ||
         origin.startsWith('http://127.0.0.1:') ||
