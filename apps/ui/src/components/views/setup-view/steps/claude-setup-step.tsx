@@ -457,8 +457,8 @@ export function ClaudeSetupStep({ onNext, onBack, onSkip }: ClaudeSetupStepProps
                       <p className="font-medium text-foreground">Verification failed</p>
                       <p className="text-sm text-red-400 mt-1">{cliVerificationError}</p>
                       {cliVerificationError.includes('login') && (
-                        <div className="mt-3 p-3 rounded bg-muted/50">
-                          <p className="text-sm text-muted-foreground mb-2">
+                        <div className="mt-3 p-3 rounded bg-muted/50 space-y-3">
+                          <p className="text-sm text-muted-foreground">
                             Run this command in your terminal:
                           </p>
                           <div className="flex items-center gap-2">
@@ -472,6 +472,28 @@ export function ClaudeSetupStep({ onNext, onBack, onSkip }: ClaudeSetupStepProps
                             >
                               <Copy className="w-4 h-4" />
                             </Button>
+                          </div>
+
+                          <div className="pt-2 border-t border-border">
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Docker (interactive):
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono text-foreground overflow-x-auto">
+                                docker exec -it -u automaker automaker-server claude login
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  copyCommand(
+                                    'docker exec -it -u automaker automaker-server claude login'
+                                  )
+                                }
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       )}

@@ -235,7 +235,7 @@ export function GitHubSetupStep({ onNext, onBack, onSkip }: GitHubSetupStepProps
                 </div>
               </div>
 
-              <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
+              <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border">
                 <p className="text-sm text-muted-foreground">Run this command in your terminal:</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 bg-muted px-3 py-2 rounded text-sm font-mono text-foreground">
@@ -244,6 +244,29 @@ export function GitHubSetupStep({ onNext, onBack, onSkip }: GitHubSetupStepProps
                   <Button variant="ghost" size="icon" onClick={() => copyCommand('gh auth login')}>
                     <Copy className="w-4 h-4" />
                   </Button>
+                </div>
+
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Docker with token (replace YOUR_TOKEN):
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono text-foreground overflow-x-auto">
+                      echo "YOUR_TOKEN" | docker exec -i -u automaker automaker-server gh auth login
+                      --with-token
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        copyCommand(
+                          'echo "YOUR_TOKEN" | docker exec -i -u automaker automaker-server gh auth login --with-token'
+                        )
+                      }
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
