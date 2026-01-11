@@ -758,6 +758,22 @@ export interface ElectronAPI {
     }>;
   };
   ideation?: IdeationAPI;
+  templates: {
+    clone: (
+      repoUrl: string,
+      projectName: string,
+      parentDir: string,
+      options?: {
+        branch?: string;
+        preserveHistory?: boolean;
+      }
+    ) => Promise<{
+      success: boolean;
+      projectPath?: string;
+      projectName?: string;
+      error?: string;
+    }>;
+  };
 }
 
 // Note: Window interface is declared in @/types/electron.d.ts

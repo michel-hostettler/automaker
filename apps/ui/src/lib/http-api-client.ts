@@ -1627,13 +1627,24 @@ export class HttpApiClient implements ElectronAPI {
     clone: (
       repoUrl: string,
       projectName: string,
-      parentDir: string
+      parentDir: string,
+      options?: {
+        branch?: string; // Optional: specific branch to clone
+        preserveHistory?: boolean; // Optional: keep git history and remote
+      }
     ): Promise<{
       success: boolean;
       projectPath?: string;
       projectName?: string;
       error?: string;
-    }> => this.post('/api/templates/clone', { repoUrl, projectName, parentDir }),
+    }> =>
+      this.post('/api/templates/clone', {
+        repoUrl,
+        projectName,
+        parentDir,
+        branch: options?.branch,
+        preserveHistory: options?.preserveHistory,
+      }),
   };
 
   // Settings API - persistent file-based settings

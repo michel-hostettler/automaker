@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { HotkeyButton } from '@/components/ui/hotkey-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -23,6 +24,8 @@ import {
   Loader2,
   Link,
   Folder,
+  GitBranch,
+  History,
 } from 'lucide-react';
 import { starterTemplates, type StarterTemplate } from '@/lib/templates';
 import { getElectronAPI } from '@/lib/electron';
@@ -39,6 +42,11 @@ interface ValidationErrors {
   customUrl?: boolean;
 }
 
+interface CloneOptions {
+  branch?: string;
+  preserveHistory?: boolean;
+}
+
 interface NewProjectModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,7 +56,12 @@ interface NewProjectModalProps {
     projectName: string,
     parentDir: string
   ) => Promise<void>;
-  onCreateFromCustomUrl: (repoUrl: string, projectName: string, parentDir: string) => Promise<void>;
+  onCreateFromCustomUrl: (
+    repoUrl: string,
+    projectName: string,
+    parentDir: string,
+    options?: CloneOptions
+  ) => Promise<void>;
   isCreating: boolean;
 }
 
@@ -67,6 +80,8 @@ export function NewProjectModal({
   const [selectedTemplate, setSelectedTemplate] = useState<StarterTemplate | null>(null);
   const [useCustomUrl, setUseCustomUrl] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
+  const [customBranch, setCustomBranch] = useState('');
+  const [preserveHistory, setPreserveHistory] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const { openFileBrowser } = useFileBrowser();
 
@@ -96,6 +111,8 @@ export function NewProjectModal({
       setSelectedTemplate(null);
       setUseCustomUrl(false);
       setCustomUrl('');
+      setCustomBranch('');
+      setPreserveHistory(false);
       setActiveTab('blank');
       setErrors({});
     }
@@ -156,7 +173,15 @@ export function NewProjectModal({
     if (activeTab === 'blank') {
       await onCreateBlankProject(projectName, workspaceDir);
     } else if (useCustomUrl && customUrl) {
-      await onCreateFromCustomUrl(customUrl, projectName, workspaceDir);
+      // Pass clone options for custom URL
+      const options: CloneOptions = {};
+      if (customBranch.trim()) {
+        options.branch = customBranch.trim();
+      }
+      if (preserveHistory) {
+        options.preserveHistory = true;
+      }
+      await onCreateFromCustomUrl(customUrl, projectName, workspaceDir, options);
     } else if (selectedTemplate) {
       await onCreateFromTemplate(selectedTemplate, projectName, workspaceDir);
     }
@@ -408,22 +433,63 @@ export function NewProjectModal({
                     </p>
 
                     {useCustomUrl && (
-                      <div onClick={(e) => e.stopPropagation()} className="space-y-1">
-                        <Input
-                          placeholder="https://github.com/username/repository"
-                          value={customUrl}
-                          onChange={(e) => setCustomUrl(e.target.value)}
-                          className={cn(
-                            'bg-input text-foreground placeholder:text-muted-foreground',
-                            errors.customUrl
-                              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                              : 'border-border'
+                      <div onClick={(e) => e.stopPropagation()} className="space-y-3">
+                        <div className="space-y-1">
+                          <Input
+                            placeholder="https://github.com/username/repository"
+                            value={customUrl}
+                            onChange={(e) => setCustomUrl(e.target.value)}
+                            className={cn(
+                              'bg-input text-foreground placeholder:text-muted-foreground',
+                              errors.customUrl
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-border'
+                            )}
+                            data-testid="custom-url-input"
+                          />
+                          {errors.customUrl && (
+                            <p className="text-xs text-red-500">GitHub URL is required</p>
                           )}
-                          data-testid="custom-url-input"
-                        />
-                        {errors.customUrl && (
-                          <p className="text-xs text-red-500">GitHub URL is required</p>
-                        )}
+                        </div>
+
+                        {/* Branch input */}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
+                            <Label className="text-xs text-muted-foreground">
+                              Branch (optional)
+                            </Label>
+                          </div>
+                          <Input
+                            placeholder="main"
+                            value={customBranch}
+                            onChange={(e) => setCustomBranch(e.target.value)}
+                            className="bg-input text-foreground placeholder:text-muted-foreground border-border h-8 text-sm"
+                            data-testid="custom-branch-input"
+                          />
+                        </div>
+
+                        {/* Preserve history checkbox */}
+                        <div className="flex items-start gap-2 pt-1">
+                          <Checkbox
+                            id="preserve-history"
+                            checked={preserveHistory}
+                            onCheckedChange={(checked) => setPreserveHistory(checked === true)}
+                            className="mt-0.5"
+                          />
+                          <div className="space-y-0.5">
+                            <Label
+                              htmlFor="preserve-history"
+                              className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                              Keep Git history
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Preserve commits and remote origin (recommended for existing projects)
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

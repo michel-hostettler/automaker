@@ -198,13 +198,18 @@ export function useProjectCreation({
    * Create project from a custom GitHub URL
    */
   const handleCreateFromCustomUrl = useCallback(
-    async (repoUrl: string, projectName: string, parentDir: string) => {
+    async (
+      repoUrl: string,
+      projectName: string,
+      parentDir: string,
+      options?: { branch?: string; preserveHistory?: boolean }
+    ) => {
       setIsCreatingProject(true);
       try {
         const api = getElectronAPI();
 
-        // Clone custom repository
-        const cloneResult = await api.templates.clone(repoUrl, projectName, parentDir);
+        // Clone custom repository with optional branch and history preservation
+        const cloneResult = await api.templates.clone(repoUrl, projectName, parentDir, options);
         if (!cloneResult.success) {
           throw new Error(cloneResult.error || 'Failed to clone repository');
         }

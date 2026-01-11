@@ -12,10 +12,12 @@ import { logger, getErrorMessage, logError } from '../common.js';
 export function createCloneHandler() {
   return async (req: Request, res: Response): Promise<void> => {
     try {
-      const { repoUrl, projectName, parentDir } = req.body as {
+      const { repoUrl, projectName, parentDir, branch, preserveHistory } = req.body as {
         repoUrl: string;
         projectName: string;
         parentDir: string;
+        branch?: string; // Optional: specific branch to clone
+        preserveHistory?: boolean; // Optional: keep git history and remote (default: false for templates)
       };
 
       // Validate inputs
@@ -28,17 +30,32 @@ export function createCloneHandler() {
       }
 
       logger.info(
-        `[Templates] Clone request - Repo: ${repoUrl}, Project: ${projectName}, Parent: ${parentDir}`
+        `[Templates] Clone request - Repo: ${repoUrl}, Project: ${projectName}, Parent: ${parentDir}, Branch: ${branch || 'default'}, PreserveHistory: ${preserveHistory || false}`
       );
 
-      // Validate repo URL is a valid GitHub URL
-      const githubUrlPattern = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+$/;
+      // Validate repo URL is a valid GitHub URL (with optional .git suffix)
+      // Also accept URLs with /tree/branch for branch selection
+      const githubUrlPattern =
+        /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\.git)?(\/tree\/[\w./-]+)?$/;
       if (!githubUrlPattern.test(repoUrl)) {
         res.status(400).json({
           success: false,
           error: 'Invalid GitHub repository URL',
         });
         return;
+      }
+
+      // Extract branch from URL if present (e.g., https://github.com/user/repo/tree/branch-name)
+      let effectiveBranch = branch;
+      let cleanRepoUrl = repoUrl;
+      const treeMatch = repoUrl.match(/\/tree\/([\w./-]+)$/);
+      if (treeMatch) {
+        effectiveBranch = effectiveBranch || treeMatch[1];
+        cleanRepoUrl = repoUrl.replace(/\/tree\/[\w./-]+$/, '');
+      }
+      // Ensure URL ends with .git for clone
+      if (!cleanRepoUrl.endsWith('.git')) {
+        cleanRepoUrl = cleanRepoUrl + '.git';
       }
 
       // Sanitize project name (allow alphanumeric, dash, underscore)
@@ -118,14 +135,23 @@ export function createCloneHandler() {
         return;
       }
 
-      logger.info(`[Templates] Cloning ${repoUrl} to ${projectPath}`);
+      logger.info(
+        `[Templates] Cloning ${cleanRepoUrl} to ${projectPath}${effectiveBranch ? ` (branch: ${effectiveBranch})` : ''}`
+      );
 
       // Clone the repository
       const cloneResult = await new Promise<{
         success: boolean;
         error?: string;
       }>((resolve) => {
-        const gitProcess = spawn('git', ['clone', repoUrl, projectPath], {
+        // Build clone arguments
+        const cloneArgs = ['clone'];
+        if (effectiveBranch) {
+          cloneArgs.push('--branch', effectiveBranch);
+        }
+        cloneArgs.push(cleanRepoUrl, projectPath);
+
+        const gitProcess = spawn('git', cloneArgs, {
           cwd: parentDir,
         });
 
@@ -162,34 +188,42 @@ export function createCloneHandler() {
         return;
       }
 
-      // Remove .git directory to start fresh
-      try {
-        const gitDir = path.join(projectPath, '.git');
-        await secureFs.rm(gitDir, { recursive: true, force: true });
-        logger.info('[Templates] Removed .git directory');
-      } catch (error) {
-        logger.warn('[Templates] Could not remove .git directory:', error);
-        // Continue anyway - not critical
+      // Handle git history based on preserveHistory option
+      if (preserveHistory) {
+        // Keep git history and remote - just log success
+        logger.info('[Templates] Preserved git history and remote origin');
+      } else {
+        // Template mode: Remove .git directory and start fresh
+        try {
+          const gitDir = path.join(projectPath, '.git');
+          await secureFs.rm(gitDir, { recursive: true, force: true });
+          logger.info('[Templates] Removed .git directory');
+        } catch (error) {
+          logger.warn('[Templates] Could not remove .git directory:', error);
+          // Continue anyway - not critical
+        }
+
+        // Initialize a fresh git repository
+        await new Promise<void>((resolve) => {
+          const gitInit = spawn('git', ['init'], {
+            cwd: projectPath,
+          });
+
+          gitInit.on('close', () => {
+            logger.info('[Templates] Initialized fresh git repository');
+            resolve();
+          });
+
+          gitInit.on('error', () => {
+            logger.warn('[Templates] Could not initialize git');
+            resolve();
+          });
+        });
       }
 
-      // Initialize a fresh git repository
-      await new Promise<void>((resolve) => {
-        const gitInit = spawn('git', ['init'], {
-          cwd: projectPath,
-        });
-
-        gitInit.on('close', () => {
-          logger.info('[Templates] Initialized fresh git repository');
-          resolve();
-        });
-
-        gitInit.on('error', () => {
-          logger.warn('[Templates] Could not initialize git');
-          resolve();
-        });
-      });
-
-      logger.info(`[Templates] Successfully cloned template to ${projectPath}`);
+      logger.info(
+        `[Templates] Successfully cloned ${preserveHistory ? 'repository' : 'template'} to ${projectPath}`
+      );
 
       res.json({
         success: true,
