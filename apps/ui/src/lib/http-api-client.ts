@@ -534,7 +534,13 @@ export class HttpApiClient implements ElectronAPI {
   }
 
   private connectWebSocket(): void {
+    console.log('[HttpApiClient] connectWebSocket called', {
+      isConnecting: this.isConnecting,
+      wsExists: !!this.ws,
+      wsReadyState: this.ws?.readyState,
+    });
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
+      console.log('[HttpApiClient] WebSocket already connecting or connected, skipping');
       return;
     }
 
@@ -597,6 +603,7 @@ export class HttpApiClient implements ElectronAPI {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
+        console.log('[HttpApiClient] WebSocket CONNECTED');
         logger.info('WebSocket connected');
         this.isConnecting = false;
         if (this.reconnectTimer) {
@@ -608,6 +615,15 @@ export class HttpApiClient implements ElectronAPI {
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          // Debug logging for backlog-plan events
+          if (data.type === 'backlog-plan:event') {
+            console.log('[HttpApiClient] Received backlog-plan:event:', data);
+            console.log(
+              '[HttpApiClient] Callbacks registered for backlog-plan:event:',
+              this.eventCallbacks.has(data.type),
+              this.eventCallbacks.get(data.type)?.size || 0
+            );
+          }
           logger.info(
             'WebSocket message:',
             data.type,
@@ -626,7 +642,8 @@ export class HttpApiClient implements ElectronAPI {
         }
       };
 
-      this.ws.onclose = () => {
+      this.ws.onclose = (event) => {
+        console.log('[HttpApiClient] WebSocket CLOSED', event.code, event.reason);
         logger.info('WebSocket disconnected');
         this.isConnecting = false;
         this.ws = null;
@@ -640,6 +657,7 @@ export class HttpApiClient implements ElectronAPI {
       };
 
       this.ws.onerror = (error) => {
+        console.error('[HttpApiClient] WebSocket ERROR:', error);
         logger.error('WebSocket error:', error);
         this.isConnecting = false;
       };
@@ -650,15 +668,23 @@ export class HttpApiClient implements ElectronAPI {
   }
 
   private subscribeToEvent(type: EventType, callback: EventCallback): () => void {
+    console.log('[HttpApiClient] subscribeToEvent:', type);
     if (!this.eventCallbacks.has(type)) {
       this.eventCallbacks.set(type, new Set());
     }
     this.eventCallbacks.get(type)!.add(callback);
+    console.log(
+      '[HttpApiClient] Callback added for',
+      type,
+      '- total callbacks:',
+      this.eventCallbacks.get(type)!.size
+    );
 
     // Ensure WebSocket is connected
     this.connectWebSocket();
 
     return () => {
+      console.log('[HttpApiClient] Unsubscribing from', type);
       const callbacks = this.eventCallbacks.get(type);
       if (callbacks) {
         callbacks.delete(callback);

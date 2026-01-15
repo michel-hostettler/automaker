@@ -58,5 +58,24 @@ if [ -d "/data" ]; then
     chown -R automaker:automaker /data
 fi
 
+# Give automaker user access to Docker socket (for deployment commands)
+if [ -S "/var/run/docker.sock" ]; then
+    # Get the GID of the docker socket
+    DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+
+    if [ "$DOCKER_GID" = "0" ]; then
+        # On Docker Desktop (Windows/macOS), socket is owned by root
+        # Make it accessible to all users
+        chmod 666 /var/run/docker.sock 2>/dev/null || true
+    else
+        # On Linux, create docker group with matching GID if needed
+        if ! getent group docker > /dev/null 2>&1; then
+            groupadd -g "$DOCKER_GID" docker 2>/dev/null || true
+        fi
+        # Add automaker user to docker group
+        usermod -aG docker automaker 2>/dev/null || true
+    fi
+fi
+
 # Switch to automaker user and execute the command
 exec gosu automaker "$@"

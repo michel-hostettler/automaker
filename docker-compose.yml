@@ -66,6 +66,9 @@ services:
       # This is used by the UI to determine if sandbox risk warnings should be shown
       - IS_CONTAINERIZED=true
     volumes:
+      # Docker socket for deployment commands (docker compose build/up)
+      - /var/run/docker.sock:/var/run/docker.sock
+
       # ONLY named volumes - these are isolated from your host filesystem
       # This volume persists data between restarts but is container-managed
       - automaker-data:/data

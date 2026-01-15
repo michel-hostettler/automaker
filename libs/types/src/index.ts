@@ -168,6 +168,20 @@ export type {
 // Port configuration
 export { STATIC_PORT, SERVER_PORT, RESERVED_PORTS } from './ports.js';
 
+// Deployment types
+export type {
+  DeploymentStep,
+  E2ETestConfig,
+  DeploymentConfig,
+  DeploymentStatus,
+  StepResult,
+  E2ETestResult,
+  DeploymentResult,
+  DeploymentEventType,
+  DeploymentEvent,
+} from './deployment.js';
+export { DEFAULT_DEPLOYMENT_CONFIG } from './deployment.js';
+
 // Ideation types
 export type {
   IdeaCategory,

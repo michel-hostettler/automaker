@@ -45,6 +45,7 @@ import {
 import { FeatureLoader } from './feature-loader.js';
 import type { SettingsService } from './settings-service.js';
 import { pipelineService, PipelineService } from './pipeline-service.js';
+import { deploymentService } from './deployment-service.js';
 import {
   getAutoLoadClaudeMdSetting,
   getEnableSandboxModeSetting,
@@ -351,6 +352,36 @@ export class AutoModeService {
         const pendingFeatures = await this.loadPendingFeatures(this.config!.projectPath);
 
         if (pendingFeatures.length === 0) {
+          // Check if all features are truly done (no running features either)
+          if (this.runningFeatures.size === 0) {
+            this.emitAutoModeEvent('auto_mode_all_complete', {
+              message: 'All features completed - auto mode finished',
+              projectPath: this.config!.projectPath,
+            });
+
+            // Check for auto-deploy trigger
+            try {
+              const deployConfig = await deploymentService.getDeploymentConfig(
+                this.config!.projectPath
+              );
+              if (deployConfig.autoDeployOnComplete && !deploymentService.isDeploymentRunning()) {
+                logger.info('Auto-deploy triggered: all features completed');
+                this.emitAutoModeEvent('auto_mode_triggering_deploy', {
+                  message: 'Triggering auto-deployment',
+                  projectPath: this.config!.projectPath,
+                });
+                // Start deployment in background (don't await)
+                deploymentService
+                  .deploy(this.config!.projectPath, 'auto_mode_complete')
+                  .catch((err) => {
+                    logger.error('Auto-deploy failed:', err);
+                  });
+              }
+            } catch (deployError) {
+              logger.debug('No deployment config or error checking:', deployError);
+            }
+          }
+
           this.emitAutoModeEvent('auto_mode_idle', {
             message: 'No pending features - auto mode idle',
             projectPath: this.config!.projectPath,

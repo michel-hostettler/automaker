@@ -59,9 +59,14 @@ FROM node:22-slim AS server
 ARG GIT_COMMIT_SHA=unknown
 LABEL automaker.git.commit.sha="${GIT_COMMIT_SHA}"
 
-# Install git, curl, bash (for terminal), gosu (for user switching), and GitHub CLI (pinned version, multi-arch)
+# Install git, curl, bash (for terminal), gosu (for user switching), Docker CLI, and GitHub CLI (pinned version, multi-arch)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl bash gosu ca-certificates openssh-client \
+    git curl bash gosu ca-certificates openssh-client gnupg lsb-release \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
     && GH_VERSION="2.63.2" \
     && ARCH=$(uname -m) \
     && case "$ARCH" in \

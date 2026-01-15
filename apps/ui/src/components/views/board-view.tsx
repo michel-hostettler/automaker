@@ -705,8 +705,11 @@ export function BoardView() {
     const api = getElectronAPI();
     if (!api?.backlogPlan) return;
 
+    console.log('[BoardView] Setting up backlog plan event subscription');
+
     const unsubscribe = api.backlogPlan.onEvent(
       (event: { type: string; result?: BacklogPlanResult; error?: string }) => {
+        console.log('[BoardView] Received backlog plan event:', event.type, event);
         if (event.type === 'backlog_plan_complete') {
           setIsGeneratingPlan(false);
           if (event.result && event.result.changes?.length > 0) {

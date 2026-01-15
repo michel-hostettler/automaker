@@ -68,6 +68,8 @@ import { createPipelineRoutes } from './routes/pipeline/index.js';
 import { pipelineService } from './services/pipeline-service.js';
 import { createIdeationRoutes } from './routes/ideation/index.js';
 import { IdeationService } from './services/ideation-service.js';
+import { createDeploymentRoutes } from './routes/deployment/index.js';
+import { deploymentService } from './services/deployment-service.js';
 
 // Load environment variables
 dotenv.config();
@@ -172,6 +174,8 @@ app.use(cookieParser());
 
 // Create shared event emitter for streaming
 const events: EventEmitter = createEventEmitter();
+// Set event emitter on deployment service
+deploymentService.setEventEmitter(events);
 
 // Create services
 // Note: settingsService is created first so it can be injected into other services
@@ -236,6 +240,7 @@ app.use('/api/backlog-plan', createBacklogPlanRoutes(events, settingsService));
 app.use('/api/mcp', createMCPRoutes(mcpTestService));
 app.use('/api/pipeline', createPipelineRoutes(pipelineService));
 app.use('/api/ideation', createIdeationRoutes(events, ideationService, featureLoader));
+app.use('/api/deployment', createDeploymentRoutes());
 
 // Create HTTP server
 const server = createServer(app);

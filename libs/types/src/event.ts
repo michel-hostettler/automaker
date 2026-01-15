@@ -39,6 +39,7 @@ export type EventType =
   | 'ideation:idea-created'
   | 'ideation:idea-updated'
   | 'ideation:idea-deleted'
-  | 'ideation:idea-converted';
+  | 'ideation:idea-converted'
+  | 'deployment_event';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

@@ -11,6 +11,7 @@ import {
   GitPullRequest,
   Zap,
   Lightbulb,
+  Rocket,
 } from 'lucide-react';
 import type { NavSection, NavItem } from '../types';
 import type { KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
@@ -161,6 +162,13 @@ export function useNavigation({
         shortcut: shortcuts.terminal,
       });
     }
+
+    // Add Deployment nav item
+    projectItems.push({
+      id: 'deployment',
+      label: 'Deployment',
+      icon: Rocket,
+    });
 
     const sections: NavSection[] = [
       {
